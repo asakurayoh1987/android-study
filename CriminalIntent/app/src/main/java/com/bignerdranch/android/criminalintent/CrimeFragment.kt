@@ -3,6 +3,7 @@ package com.bignerdranch.android.criminalintent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,6 +11,11 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import androidx.fragment.app.Fragment
+import androidx.lifecycle.ViewModelProvider
+import java.util.UUID
+
+private const val TAG = "CrimeFragment"
+private const val ARG_CRIME_ID = "crime_id"
 
 class CrimeFragment : Fragment() {
     private lateinit var crime: Crime
@@ -17,10 +23,21 @@ class CrimeFragment : Fragment() {
     private lateinit var dateButton: Button
     private lateinit var solvedCheckBox: CheckBox
 
+    private val crimeDetailViewModel: CrimeDetailViewModel by lazy {
+        ViewModelProvider(this)[CrimeDetailViewModel::class.java]
+    }
+
     // 如果没有可见性修饰符，那么Kotlin函数默认是公共的
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         crime = Crime()
+
+        val crimeId: UUID = arguments?.getString(ARG_CRIME_ID)?.let {
+            UUID.fromString(it)
+        } ?: throw IllegalArgumentException("no crime ID found in arguments")
+        Log.d(TAG, "args bundle crime ID: $crimeId")
+
+        crimeDetailViewModel.loadCrime(crimeId)
     }
 
     override fun onCreateView(
@@ -42,6 +59,15 @@ class CrimeFragment : Fragment() {
         return view
     }
 
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
+        crimeDetailViewModel.crimeLiveData.observe(viewLifecycleOwner) { crime ->
+            crime?.let {
+                this.crime = crime
+                updateUI()
+            }
+        }
+    }
 
     override fun onStart() {
         super.onStart()
@@ -51,7 +77,7 @@ class CrimeFragment : Fragment() {
             override fun beforeTextChanged(
                 sequence: CharSequence?, start: Int, count: Int, after: Int
             ) {
-                TODO("Not yet implemented")
+                Log.d(TAG, "Not yet implemented")
             }
 
             override fun onTextChanged(
@@ -61,13 +87,33 @@ class CrimeFragment : Fragment() {
             }
 
             override fun afterTextChanged(sequence: Editable?) {
-                TODO("Not yet implemented")
+                Log.d(TAG, "Not yet implemented")
             }
         }
         titleField.addTextChangedListener(titleWatcher)
 
         solvedCheckBox.apply {
             setOnCheckedChangeListener { _, isChecked -> crime.isSolved = isChecked }
+        }
+    }
+
+    private fun updateUI() {
+        titleField.setText(crime.title)
+        dateButton.text = crime.date.toString()
+        solvedCheckBox.apply {
+            isChecked = crime.isSolved
+            jumpDrawablesToCurrentState()
+        }
+    }
+
+    companion object {
+        fun newInstance(crimeId: UUID): CrimeFragment {
+            val args = Bundle().apply {
+                putString(ARG_CRIME_ID, crimeId.toString())
+            }
+            return CrimeFragment().apply {
+                arguments = args
+            }
         }
     }
 }
