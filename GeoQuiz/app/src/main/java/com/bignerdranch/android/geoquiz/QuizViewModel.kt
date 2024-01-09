@@ -7,7 +7,7 @@ private const val TAG = "QuizViewModel"
 
 class QuizViewModel : ViewModel() {
     var currentIndex = 0
-    var remainCheatTimes = 3
+    private var remainCheatTimes = 3
 
     private val questionBank = listOf(
         Question(R.string.question_australia, true),
@@ -31,13 +31,14 @@ class QuizViewModel : ViewModel() {
         get() = remainCheatTimes > 0
 
     fun moveToNext() {
+        Log.d(TAG, "Move to Next")
         currentIndex = (currentIndex + 1) % questionBank.size
     }
 
     fun cheat() {
         if (!questionBank[currentIndex].cheated) {
-            questionBank[currentIndex].cheated = true;
-            remainCheatTimes--;
+            questionBank[currentIndex].cheated = true
+            remainCheatTimes--
         }
 
     }

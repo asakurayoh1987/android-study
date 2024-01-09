@@ -6,11 +6,9 @@ import android.content.Intent
 import android.os.Build
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.util.Log
 import android.widget.Button
 import android.widget.TextView
-import androidx.lifecycle.ViewModelProviders
 
 // 使用包名修饰extra数据信息，这样，可避免来自不同应用的extra间发生命名冲突
 private const val EXTRA_ANSWER_IS_TRUE = "com.bignerdranch.android.geoquic.answer_is_true"
@@ -37,7 +35,7 @@ class CheatActivity : AppCompatActivity() {
         showAnswerButton = findViewById(R.id.show_answer_button)
         compiledVerTextView = findViewById(R.id.compiled_version)
 
-        compiledVerTextView.setText("API Level " + Build.VERSION.SDK_INT)
+        compiledVerTextView.text = "API Level ${Build.VERSION.SDK_INT}"
 
         showAnswerButton.setOnClickListener {
             val answerText = when {
