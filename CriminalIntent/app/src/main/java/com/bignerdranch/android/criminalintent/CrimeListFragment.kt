@@ -1,18 +1,26 @@
 package com.bignerdranch.android.criminalintent
 
 import android.content.Context
-import android.text.format.DateFormat
 import android.os.Bundle
+import android.text.format.DateFormat
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Menu
+import android.view.MenuInflater
+import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import java.util.UUID
 
@@ -27,8 +35,11 @@ class CrimeListFragment : Fragment() {
     }
 
     private var callbacks: Callbacks? = null
+
     private lateinit var crimeRecylerView: RecyclerView
-    private var adapter: CrimeAdapter? = CrimeAdapter((emptyList()))
+    private lateinit var crimeEmptyPlaceHolder: LinearLayout
+    private lateinit var addCrimeButton: Button
+    private var adapter: CrimeAdapter? = CrimeAdapter()
     private val crimeListViewModel: CrimeListViewModel by lazy {
         ViewModelProvider(this)[CrimeListViewModel::class.java]
     }
@@ -38,12 +49,30 @@ class CrimeListFragment : Fragment() {
         callbacks = context as Callbacks?
     }
 
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // 告之FragmentManager，CrimeListFragment需要接收选项菜单函数回调
+        // Fragment.onCreateOptionsMenu(Menu, MenuInflater)函数是由FragmentManager负责调用的。
+        // 因此，当activity接收到操作系统的onCreateOptionsMenu(...)函数回调请求时，我们必须明确告诉FragmentManager，
+        // 其管理的fragment应接收onCreateOptionsMenu(...)函数的调用指令
+        setHasOptionsMenu(true)
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater,
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
         val view = inflater.inflate(R.layout.fragment_crime_list, container, false)
+
+        crimeEmptyPlaceHolder = view.findViewById(R.id.crime_empty_placeholder)
+        addCrimeButton = view.findViewById(R.id.new_crime)
+
+        addCrimeButton.setOnClickListener {
+            val crime = Crime()
+            crimeListViewModel.addCrime(crime)
+            callbacks?.onCrimeSelected(crime.id)
+        }
 
         crimeRecylerView = view.findViewById(R.id.crime_recycler_view) as RecyclerView
         crimeRecylerView.layoutManager = LinearLayoutManager(context)
@@ -64,14 +93,46 @@ class CrimeListFragment : Fragment() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as AppCompatActivity).supportActionBar?.show()
+    }
+
     override fun onDetach() {
         super.onDetach()
         callbacks = null
     }
 
+    override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
+        super.onCreateOptionsMenu(menu, inflater)
+        // 将布局中定义的菜单项目填充到Menu实例中
+        inflater.inflate(R.menu.fragment_crime_list, menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        return when (item.itemId) {
+            R.id.new_crime -> {
+                val crime = Crime()
+                crimeListViewModel.addCrime(crime)
+                callbacks?.onCrimeSelected(crime.id)
+                // 返回true值以表明任务已完成。如果返回false值，
+                // 就调用托管activity的onOptionsItemSelected(MenuItem)函数继续
+                true
+            }
+
+            else -> return super.onOptionsItemSelected(item)
+        }
+    }
+
     private fun updateUI(crimes: List<Crime>) {
-        adapter = CrimeAdapter(crimes)
-        crimeRecylerView.adapter = adapter
+        if (crimes.isNotEmpty()) {
+            crimeRecylerView.visibility = View.VISIBLE
+            crimeEmptyPlaceHolder.visibility = View.GONE
+            adapter?.submitList(crimes)
+        } else {
+            crimeRecylerView.visibility = View.GONE
+            crimeEmptyPlaceHolder.visibility = View.VISIBLE
+        }
     }
 
     companion object {
@@ -110,8 +171,31 @@ class CrimeListFragment : Fragment() {
 
     }
 
-    private inner class CrimeAdapter(var crimes: List<Crime>) :
-        RecyclerView.Adapter<CrimeHolder>() {
+    private inner class CrimeDiffCallback : DiffUtil.ItemCallback<Crime>() {
+        override fun areItemsTheSame(oldItem: Crime, newItem: Crime): Boolean {
+            val result = oldItem.id == newItem.id
+            if (!result) {
+                Log.i(TAG, "check and find different id")
+            }
+            return result
+        }
+
+        override fun areContentsTheSame(oldItem: Crime, newItem: Crime): Boolean {
+            val result = oldItem.title == newItem.title &&
+                    oldItem.date == newItem.date &&
+                    oldItem.isSolved == newItem.isSolved
+
+            if (!result) {
+                Log.i(TAG, "check and find different content")
+            }
+
+            return result
+        }
+
+    }
+
+    private inner class CrimeAdapter :
+        ListAdapter<Crime, CrimeHolder>(CrimeDiffCallback()) {
 
         // Adapter.onCreateViewHolder(...)负责创建要显示的视图，将其封装到一个ViewHolder里并返回结果
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CrimeHolder {
@@ -124,12 +208,9 @@ class CrimeListFragment : Fragment() {
             return CrimeHolder(view)
         }
 
-        // getItemCount()会返回crime数据集里有多少个列表项要显示
-        override fun getItemCount() = crimes.size
-
         // Adapter.onBindViewHolder(holder: CrimeHolder, position: Int)负责将数据集里指定位置的crime数据发送给指定ViewHolder
         override fun onBindViewHolder(holder: CrimeHolder, position: Int) {
-            val crime = crimes[position]
+            val crime = getItem(position)
             holder.bind(crime)
         }
     }

@@ -10,14 +10,18 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
+import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import java.util.Date
 import java.util.UUID
 
 private const val TAG = "CrimeFragment"
 private const val ARG_CRIME_ID = "crime_id"
+private const val DIALOG_DATE = "DialogDate"
+private const val REQUEST_DATE = 0
 
-class CrimeFragment : Fragment() {
+class CrimeFragment : Fragment(), DatePickerFragment.Callbacks {
     private lateinit var crime: Crime
     private lateinit var titleField: EditText
     private lateinit var dateButton: Button
@@ -35,7 +39,7 @@ class CrimeFragment : Fragment() {
         val crimeId: UUID = arguments?.getString(ARG_CRIME_ID)?.let {
             UUID.fromString(it)
         } ?: throw IllegalArgumentException("no crime ID found in arguments")
-        Log.d(TAG, "args bundle crime ID: $crimeId")
+        Log.i(TAG, "args bundle crime ID: $crimeId")
 
         crimeDetailViewModel.loadCrime(crimeId)
     }
@@ -53,7 +57,6 @@ class CrimeFragment : Fragment() {
         dateButton.apply {
             // 禁用Button按钮，确保它不会响应用户点击
             text = crime.date.toString()
-            isEnabled = false
         }
 
         return view
@@ -77,7 +80,7 @@ class CrimeFragment : Fragment() {
             override fun beforeTextChanged(
                 sequence: CharSequence?, start: Int, count: Int, after: Int
             ) {
-                Log.d(TAG, "Not yet implemented")
+                Log.i(TAG, "Not yet implemented")
             }
 
             override fun onTextChanged(
@@ -87,7 +90,7 @@ class CrimeFragment : Fragment() {
             }
 
             override fun afterTextChanged(sequence: Editable?) {
-                Log.d(TAG, "Not yet implemented")
+                Log.i(TAG, "Not yet implemented")
             }
         }
         titleField.addTextChangedListener(titleWatcher)
@@ -95,6 +98,28 @@ class CrimeFragment : Fragment() {
         solvedCheckBox.apply {
             setOnCheckedChangeListener { _, isChecked -> crime.isSolved = isChecked }
         }
+
+        dateButton.setOnClickListener {
+            DatePickerFragment.newInstance(crime.date).apply {
+                setTargetFragment(this@CrimeFragment, REQUEST_DATE)
+                show(this@CrimeFragment.parentFragmentManager, DIALOG_DATE)
+            }
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        (requireActivity() as AppCompatActivity).supportActionBar?.hide()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        crimeDetailViewModel.saveCrime(crime)
+    }
+
+    override fun onDateSelected(date: Date) {
+        crime.date = date
+        updateUI()
     }
 
     private fun updateUI() {
