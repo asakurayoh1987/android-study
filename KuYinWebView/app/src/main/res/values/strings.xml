@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">KuYinWebView</string>
+    <string name="confirm_btn_text">Confirm</string>
+    <string name="url_input_hint">Input Url</string>
+</resources>
